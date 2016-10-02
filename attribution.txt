@@ -1,6 +1,11 @@
+LICENSES
+
 CC-BY-4.0           http://creativecommons.org/licenses/by/4.0/legalcode
 
 
 
-All music by To Eris 
+MUSIC
+
+All music is by To Eris and is licensed as CC-BY-4.0
+
 http://freemusicarchive.org/music/To_Eris/

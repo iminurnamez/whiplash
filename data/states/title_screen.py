@@ -69,7 +69,7 @@ class TitleScreen(tools._State):
                 self.done = True
                 self.persist["player"] = self.make_player()
                 self.persist["music handler"] = self.music_handler
-                self.next = "GAMEPLAY"
+                self.next = "GAMEPLAY" #"TUTORIAL"
                 
     def load_player(self):
         try:

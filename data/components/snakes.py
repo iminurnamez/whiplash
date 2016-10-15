@@ -106,6 +106,7 @@ class Chain(object):
         
     def draw(self, surface):
         if len(self.points) > 1:
+            #pg.draw.lines(surface, self.color, False, self.points, 2)
             for p in self.points:
                 pg.draw.circle(surface, self.color, p, 2)
         

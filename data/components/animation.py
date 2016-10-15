@@ -1,3 +1,4 @@
+#https://github.com/bitcraft/animation
 from math import sqrt, cos, sin, pi
 import pygame
 import sys

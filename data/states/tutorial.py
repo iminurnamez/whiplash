@@ -1,4 +1,4 @@
-from random import choice, sample
+from random import choice
 
 import pygame as pg
 
@@ -8,7 +8,7 @@ from ..components.labels import Label
 from ..components.snakes import Snake, Chain, Remnant
 
 
-class Gameplay(tools._State):
+class Tutorial(tools._State):
     w, h = prepare.SCREEN_RECT.size
     x_points = list(range(-200, -100)) + list(range(w + 100, w + 200))
     y_points = list(range(-200, -100)) + list(range(h + 100, h + 200))
@@ -16,15 +16,12 @@ class Gameplay(tools._State):
                 (255, 0, 170), (0, 255, 170), (0, 170, 255)]
     bg_color = pg.Color("black")
     snake_sound = prepare.SFX["snake"]
-    offsets = [(x, y) for x in range(2) for y in range(2)]
-    offsets.remove((0, 0))
+
     def __init__(self):
-        super(Gameplay, self).__init__()
+        super(Tutorial, self).__init__()
         self.num_nodes = 500
-        
         self.num_snakes = 25
-        self.render_surf = pg.Surface(prepare.SCREEN_RECT.size)
-        
+
     def add_snake(self):
         """Add a new enemy snake."""
         self.snake_sound.play()
@@ -41,7 +38,7 @@ class Gameplay(tools._State):
         self.music_handler = self.persist["music handler"]
         self.animations = pg.sprite.Group()
         pos = prepare.SCREEN_RECT.center
-        pg.mouse.set_pos(pos)
+        self.mousex, self.mousey = pos
         self.snake_speed = 3
         self.snakes = []
 
@@ -51,10 +48,7 @@ class Gameplay(tools._State):
         self.color_flipper = Task(self.change_colors, self.color_freq, -1)
         self.animations.add(task, task2, self.color_flipper)
         self.player_snake = Chain(prepare.SCREEN_RECT.center, 100,
-                                                pg.Color("white"))
-        pg.mouse.set_pos(prepare.SCREEN_RECT.center)
-        pg.mouse.set_visible(False)
-
+                                               pg.Color("white"))
         self.remnants = []
         self.score = 0
         self.score_label = Label(
@@ -70,20 +64,35 @@ class Gameplay(tools._State):
         self.player_color_frequency = 100
         self.player_color_timer = 0
         
-        self.shake_x, self.shake_y = 0, 0
-        self.shake_timer = 0
+        self.mousex, self.mousey = prepare.SCREEN_RECT.center
+        self.make_mouse_moves()
         
-    def shake(self):
-        offsets = sample(self.offsets, 3)
-        offsets.append((0, 0))
-        delay = 0
-        dur = 60
-        shake_amount = 10
-        for offset in offsets:
-            ani = Animation(shake_x=offset[0] * shake_amount, shake_y=offset[1] * shake_amount, duration=dur, delay=delay)
+    def make_mouse_moves(self):
+        mouse_moves = [
+                ((100, 100), 1000),
+                ((500, 600), 2000),
+                ((1000, 500), 2000),
+                ((300, 300), 2000)]
+        delay_ = 0       
+        for dest, dur in mouse_moves:
+            ani = Animation(mousex=dest[0], mousey=dest[1], delay=delay_,
+                                    duration=dur, round_values=True)
             ani.start(self)
             self.animations.add(ani)
-            delay += dur
+            delay_ += dur
+
+    def add_instruction(self, label, fade_time):
+        self.instruction = label
+        
+    def make_instructions(self):
+        instructions = [
+                ("Use the mouse to move your snake", 250, 2000),
+                ("You gain points while at full length", 5000, 2000)]
+        for text, start, dur in instructions:
+            label = Label(text, {"center": prepare.SCREEN_RECT.center})
+            task = Task(self.add_instruction, start, args=(label, dur))
+            self.animations.add(task)            
+                
 
     def speed_up(self):
         """Increase enemy snakes' speed."""
@@ -139,9 +148,8 @@ class Gameplay(tools._State):
         text = "{}".format(int(self.score))
         self.score_label.set_text(text)
 
-    def make_bonus_label(self, bonus):
+    def make_bonus_label(self, text):
         """Create a label, fade it in then use animation callback to fade out."""
-        text = "{}X MULTIPLIER".format(bonus)
         self.bonus_label = Label(
                 text, {"center": prepare.SCREEN_RECT.center},
                 text_color=choice(self.colors), font_size=64, alpha=1,
@@ -166,19 +174,9 @@ class Gameplay(tools._State):
         self.next = "HIGH_SCORES"
 
     def update(self, dt):
+        print(self.mousex, self.mousey)
         self.animations.update(dt)
-        mx, my = pg.mouse.get_pos()
-        if mx < 0:
-            mx = 0
-        elif mx > prepare.SCREEN_SIZE[0]:
-            mx = prepare.SCREEN_SIZE[0]
-        if my < 0:
-            my = 0
-        elif my > prepare.SCREEN_SIZE[1]:
-            my = prepare.SCREEN_SIZE[1]
-        mouse_pos = mx, my
-        pg.mouse.set_pos(mouse_pos)
-        
+        pg.mouse.set_pos((self.mousex, self.mousey))
         #Change how often enemy snakes change color based on
         #beats per minute of current song
         self.music_handler.update()
@@ -198,7 +196,7 @@ class Gameplay(tools._State):
             self.to_high_scores()
         elif len(self.player_snake.nodes) < self.num_nodes:
             self.player_snake.add_node()
-        self.player_snake.update(mouse_pos)
+        self.player_snake.update((self.mousex, self.mousey))
 
         for snake in self.snakes:
             snake.update(dt, prepare.SCREEN_RECT)
@@ -214,7 +212,7 @@ class Gameplay(tools._State):
                 ani.start(remnant)
                 self.animations.add(ani)
                 self.remnants.append(remnant)
-            self.shake()
+
         for rem in self.remnants:
             rem.update()
         self.remnants = [r for r in self.remnants if r.alpha > 0]
@@ -253,13 +251,12 @@ class Gameplay(tools._State):
 
     def draw(self, surface):
         """Draw everything to the screen."""
-        self.render_surf.fill(self.bg_color)
+        surface.fill(self.bg_color)
         for r in self.remnants:
-            r.draw(self.render_surf)
+            r.draw(surface)
         for snake in self.snakes:
-            snake.draw(self.render_surf)
-        self.draw_player(self.render_surf)
-        self.score_label.draw(self.render_surf)
+            snake.draw(surface)
+        self.draw_player(surface)
+        self.score_label.draw(surface)
         if self.bonus_label:
-            self.bonus_label.draw(self.render_surf)
-        surface.blit(self.render_surf, (self.shake_x, self.shake_y))
+            self.bonus_label.draw(surface)
